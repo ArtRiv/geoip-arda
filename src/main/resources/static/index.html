@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Consulta de Localização por IP</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        input, button, select {
+            padding: 8px;
+            margin: 10px 0;
+        }
+        #resultado {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        #campo-ip {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<h1>Consulta de Localização por Endereço IP</h1>
+
+<label for="modo">Escolha o modo de consulta:</label><br />
+<select id="modo" onchange="alternarModo()">
+    <option value="meu">Meu IP (automático)</option>
+    <option value="outro">Informar outro IP</option>
+</select>
+
+<div id="campo-ip">
+    <label for="ip">Endereço IP:</label><br />
+    <input type="text" id="ip" placeholder="Ex: 8.8.8.8" />
+</div>
+
+<button onclick="consultar()">Consultar</button>
+
+<div id="resultado"></div>
+
+<script>
+    function alternarModo() {
+        const modo = document.getElementById('modo').value;
+        const campoIP = document.getElementById('campo-ip');
+        document.getElementById('resultado').textContent = '';
+        campoIP.style.display = (modo === 'outro') ? 'block' : 'none';
+    }
+
+    async function consultar() {
+        const modo = document.getElementById('modo').value;
+        const resultado = document.getElementById('resultado');
+        let url = '/geoip';
+
+        if (modo === 'outro') {
+            const ip = document.getElementById('ip').value.trim();
+            if (!ip) {
+                resultado.textContent = 'Digite um endereço IP.';
+                return;
+            }
+            url = `/geoip/${ip}`;
+        }
+
+        try {
+            resultado.textContent = 'Consultando...';
+            const response = await fetch(url);
+            const dados = await response.json();
+
+            if (!dados.pais && !dados.local) {
+                resultado.textContent = 'Dados de localização não disponíveis.';
+                return;
+            }
+
+            resultado.innerHTML = `
+          <p><strong>País:</strong> ${dados.pais || 'N/A'}</p>
+          <p><strong>Localidade:</strong> ${dados.local || 'N/A'}</p>
+        `;
+        } catch (error) {
+            resultado.textContent = 'Localidade deste endereço é desconhecida';
+            console.error(error);
+        }
+    }
+
+    alternarModo();
+</script>
+</body>
+</html>
