@@ -23,68 +23,94 @@ class Par<K, V> {
 }
 
 public class TabHash<K, V> {
-    private int capacidade = 8;
+    private int capacidade;
     private int tamanho = 0;
-
     private Par<K, V>[] tab;
+    private final Par<K, V> TOMBSTONE = new Par<>(null, null);
 
     @SuppressWarnings("unchecked")
     public TabHash() {
-        this.capacidade = 8;
-        this.tab = (Par<K, V>[]) new Par[capacidade];
+        this(256); 
+    }
+
+    @SuppressWarnings("unchecked")
+    public TabHash(int capacidadeInicial) {
+        this.capacidade = proximaPotenciaDeDois(capacidadeInicial);
+        this.tab = (Par<K, V>[]) new Par[this.capacidade];
         this.tamanho = 0;
     }
 
+    private int proximaPotenciaDeDois(int n) {
+        int cap = 1;
+        while (cap < n) {
+            cap <<= 1;
+        }
+        return cap;
+    }
+
     private int h1(K chave) {
-        return Math.abs(chave.hashCode()) % capacidade;
+        int h = chave.hashCode();
+        h ^= (h >>> 20) ^ (h >>> 12);
+        return (h ^ (h >>> 7) ^ (h >>> 4)) & (capacidade - 1);
     }
 
     private int h2(K chave) {
-        return 1 + (Math.abs(chave.hashCode()) % (capacidade - 1));
+        int hash = Math.abs(chave.hashCode());
+        return (hash % (capacidade / 2)) * 2 + 1;
     }
 
     public void adiciona(K chave, V valor) {
-        if ((float)(tamanho + 1) / capacidade > 0.75) {
+        if ((float)(tamanho + 1) / capacidade > 0.75f) {
             expande();
         }
 
         int hash1 = h1(chave);
-        int hash2 = h2(chave);
+        int passo = h2(chave);
+        int indice = hash1;
+        int primeiroTombstone = -1;
 
         for (int i = 0; i < capacidade; i++) {
-            int indice = (hash1 + i * hash2) % capacidade;
             Par<K, V> par = tab[indice];
 
-            if (par == null || par.obtemChave() == null) {
-                tab[indice] = new Par<>(chave, valor);
+            if (par == null) {
+                int indiceFinal = (primeiroTombstone != -1) ? primeiroTombstone : indice;
+                tab[indiceFinal] = new Par<>(chave, valor);
                 tamanho++;
                 return;
             }
 
-            if (par.obtemChave().equals(chave)) {
+            if (par == TOMBSTONE) {
+                if (primeiroTombstone == -1) {
+                    primeiroTombstone = indice;
+                }
+            } else if (par.obtemChave().equals(chave)) {
                 par.defineValor(valor);
                 return;
             }
+
+            indice = (indice + passo) & (capacidade - 1);
         }
 
-        throw new RuntimeException("Tabela cheia, não foi possível inserir");
+        throw new RuntimeException("Tabela cheia, não foi possível inserir. Capacidade: " + capacidade + ", Tamanho: " + tamanho);
     }
 
     public V obtem(K chave) {
         int hash1 = h1(chave);
-        int hash2 = h2(chave);
+        int passo = h2(chave);
+        int indice = hash1;
 
         for (int i = 0; i < capacidade; i++) {
-            int indice = (hash1 + i * hash2) % capacidade;
             Par<K, V> par = tab[indice];
 
             if (par == null) {
                 return null;
             }
 
-            if (par.obtemChave() != null && par.obtemChave().equals(chave)) {
+            if (par != TOMBSTONE && par.obtemChave().equals(chave)) {
                 return par.obtemValor();
             }
+
+            indice = (indice + passo) & (capacidade - 1);
         }
 
         return null;
@@ -92,21 +118,23 @@ public class TabHash<K, V> {
 
     public void remove(K chave) {
         int hash1 = h1(chave);
-        int hash2 = h2(chave);
+        int passo = h2(chave);
+        int indice = hash1;
 
         for (int i = 0; i < capacidade; i++) {
-            int indice = (hash1 + i * hash2) % capacidade;
             Par<K, V> par = tab[indice];
 
             if (par == null) {
                 return;
             }
 
-            if (par.obtemChave() != null && par.obtemChave().equals(chave)) {
-                tab[indice] = new Par<>(null, null);
+            if (par != TOMBSTONE && par.obtemChave().equals(chave)) {
+                tab[indice] = TOMBSTONE;
                 tamanho--;
                 return;
             }
+
+            indice = (indice + passo) & (capacidade - 1);
         }
     }
 
@@ -122,31 +150,20 @@ public class TabHash<K, V> {
         return tamanho;
     }
 
+    @SuppressWarnings("unchecked")
     private void expande() {
-        int novaCapacidade = capacidade * 2;
-        @SuppressWarnings("unchecked")
-        Par<K, V>[] novaTab = (Par<K, V>[]) new Par[novaCapacidade];
+        int antigaCapacidade = capacidade;
+        Par<K, V>[] antigaTab = tab;
 
-        for (int i = 0; i < capacidade; i++) {
-            Par<K, V> par = tab[i];
+        capacidade = antigaCapacidade * 2;
+        tab = (Par<K, V>[]) new Par[capacidade];
+        tamanho = 0;
 
-            if (par != null && par.obtemChave() != null) {
-                K chave = par.obtemChave();
-                V valor = par.obtemValor();
-
-                int hash1 = Math.abs(chave.hashCode() % novaCapacidade);
-                int hash2 = 1 + Math.abs(chave.hashCode() % (novaCapacidade - 1));
-
-                for (int j = 0; j < novaCapacidade; j++) {
-                    int indice = (hash1 + j * hash2) % novaCapacidade;
-                    if (novaTab[indice] == null) {
-                        novaTab[indice] = new Par<>(chave, valor);
-                        break;
-                    }
-                }
+        for (int i = 0; i < antigaCapacidade; i++) {
+            Par<K, V> par = antigaTab[i];
+            if (par != null && par != TOMBSTONE) {
+                adiciona(par.obtemChave(), par.obtemValor());
             }
         }
-        tab = novaTab;
-        capacidade = novaCapacidade;
     }
 }

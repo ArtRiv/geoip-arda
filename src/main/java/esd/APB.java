@@ -5,16 +5,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-class NodoAPB<T extends Comparable<T>> {
-    T valor;
-    NodoAPB<T> esq, dir, pai;
-
-    public NodoAPB(T item) {
-        valor = item;
-        esq = dir = pai = null;
-    }
-}
-
 public class APB<T extends Comparable<T>> {
     private NodoAPB<T> raiz;
     private int len;
@@ -129,7 +119,7 @@ public class APB<T extends Comparable<T>> {
 
     public ListaSequencial<T> listePostOrder() {
         ListaSequencial<T> lista = new ListaSequencial<>();
-        
+
         listePostOrderRec(raiz, lista);
 
         return lista;
@@ -248,27 +238,49 @@ public class APB<T extends Comparable<T>> {
     }
 
     public void balanceia() {
-        List<T> nos = new ArrayList<>();
+        ListaSequencial<T> nos = new ListaSequencial<>();
         storeInOrder(raiz, nos);
-        this.raiz = buildBalanced(nos, 0, nos.size() - 1, null);
+        this.raiz = buildBalanced(nos, 0, nos.comprimento() - 1, null);
     }
 
-    private void storeInOrder(NodoAPB<T> no, List<T> nos) {
+    private void storeInOrder(NodoAPB<T> no, ListaSequencial<T> nos) {
         if (no == null)
             return;
         storeInOrder(no.esq, nos);
-        nos.add(no.valor);
+        nos.adiciona(no.valor);
         storeInOrder(no.dir, nos);
     }
 
-    private NodoAPB<T> buildBalanced(List<T> nos, int start, int end, NodoAPB<T> pai) {
-        if (start > end)
+    private NodoAPB<T> buildBalanced(ListaSequencial<T> nos, int start, int end, NodoAPB<T> pai) {
+        if (start > end) {
             return null;
-        int mid = (start + end) / 2;
-        NodoAPB<T> no = new NodoAPB<>(nos.get(mid));
+        }
+        int mid = start + (end - start) / 2;
+        NodoAPB<T> no = new NodoAPB<>(nos.obtem(mid));
         no.pai = pai;
         no.esq = buildBalanced(nos, start, mid - 1, no);
         no.dir = buildBalanced(nos, mid + 1, end, no);
         return no;
     }
+
+    public static class NodoAPB<E extends Comparable<E>> {
+        public E valor;
+        public NodoAPB<E> esq, dir, pai;
+
+        public NodoAPB(E item) {
+            valor = item;
+            esq = dir = pai = null;
+        }
+    }
+
+    public void constroiDeListaOrdenada(ListaSequencial<T> elementos) {
+        if (elementos == null || elementos.esta_vazia()) {
+            this.raiz = null;
+            this.len = 0;
+            return;
+        }
+        this.raiz = buildBalanced(elementos, 0, elementos.comprimento() - 1, null);
+        this.len = elementos.comprimento();
+    }
+
 }
