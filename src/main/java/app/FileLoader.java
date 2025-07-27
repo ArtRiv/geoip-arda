@@ -7,7 +7,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 
 import esd.APB;
-import esd.Lista;
 import esd.ListaSequencial;
 import esd.TabHash;
 
@@ -71,7 +70,7 @@ public class FileLoader {
         InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(IPV4_BLOCKS);
         if (is == null) throw new FileNotFoundException("Arquivo de blocos IPv4 não encontrado: " + IPV4_BLOCKS);
 
-        Lista<IPRange> rangesListLigada = new Lista<>();
+        ListaSequencial<IPRange> rangesListSequencial = new ListaSequencial<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
             reader.readLine();
             String linha;
@@ -82,27 +81,56 @@ public class FileLoader {
                         String rede = campos[0];
                         int geonameId = Integer.parseInt(campos[1]);
                         if (localizacoes.contem(geonameId)) {
-                            rangesListLigada.adiciona(IPUtil.cidrToRange(rede, geonameId));
+                            rangesListSequencial.adiciona(IPUtil.cidrToRange(rede, geonameId));
                         }
                     } catch (Exception e) { }
                 }
             }
         }
-        System.out.println("Lidos " + rangesListLigada.comprimento() + " blocos de IP para a sua Lista (ligada).");
+        System.out.println("Lidos " + rangesListSequencial.comprimento() + " blocos de IP para a sua ListaSequencial.");
 
-        System.out.println("Iniciando ordenação da Lista (ligada)...");
-        rangesListLigada.ordena();
-        System.out.println("Sua Lista (ligada) foi ordenada.");
-
-        System.out.println("Convertendo para ListaSequencial para construção otimizada da árvore...");
-        ListaSequencial<IPRange> rangesListSequencial = new ListaSequencial<>();
-        for (int i = 0; i < rangesListLigada.comprimento(); i++) {
-            rangesListSequencial.adiciona(rangesListLigada.obtem(i));
-        }
-        rangesListLigada = null; 
+        System.out.println("Iniciando ordenação da ListaSequencial...");
+        // Ordenação eficiente
+        ordenarListaSequencial(rangesListSequencial);
+        System.out.println("Sua ListaSequencial foi ordenada.");
 
         System.out.println("Construindo a árvore balanceada a partir da ListaSequencial...");
         ipRanges.constroiDeListaOrdenada(rangesListSequencial);
         System.out.println("Árvore de intervalos IP construída com sucesso de forma balanceada.");
+    }
+
+    // Usar merge sort para ordenar ListaSequencial<IPRange>
+    private static void ordenarListaSequencial(ListaSequencial<IPRange> lista) {
+        if (lista.comprimento() <= 1) return;
+        mergeSort(lista, 0, lista.comprimento() - 1, new IPRange[lista.comprimento()]);
+    }
+
+    private static void mergeSort(ListaSequencial<IPRange> lista, int inicio, int fim, IPRange[] aux) {
+        if (inicio < fim) {
+            int meio = (inicio + fim) / 2;
+            mergeSort(lista, inicio, meio, aux);
+            mergeSort(lista, meio + 1, fim, aux);
+            merge(lista, inicio, meio, fim, aux);
+        }
+    }
+
+    private static void merge(ListaSequencial<IPRange> lista, int inicio, int meio, int fim, IPRange[] aux) {
+        int i = inicio, j = meio + 1, k = inicio;
+        while (i <= meio && j <= fim) {
+            if (lista.obtem(i).compareTo(lista.obtem(j)) <= 0) {
+                aux[k++] = lista.obtem(i++);
+            } else {
+                aux[k++] = lista.obtem(j++);
+            }
+        }
+        while (i <= meio) {
+            aux[k++] = lista.obtem(i++);
+        }
+        while (j <= fim) {
+            aux[k++] = lista.obtem(j++);
+        }
+        for (int l = inicio; l <= fim; l++) {
+            lista.substitui(l, aux[l]);
+        }
     }
 }

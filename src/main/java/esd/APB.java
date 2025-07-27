@@ -140,7 +140,7 @@ public class APB<T extends Comparable<T>> {
 
         nos.adiciona(raiz);
 
-        while (!nos.esta_vazia()) {
+        while (!nos.estaVazia()) {
             NodoAPB<T> no = nos.acessa_inicio();
             lista.adiciona(no.valor);
             if (no.esq != null) {

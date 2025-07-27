@@ -1,169 +1,208 @@
 package esd;
 
-class Par<K, V> {
-    private K chave;
-    private V valor;
+@SuppressWarnings("unchecked")
+public class TabHash<K extends Comparable<K>, T> {
 
-    public Par(K chave, V valor) {
-        this.chave = chave;
-        this.valor = valor;
+    public class Par implements Comparable<Par> {
+        K chave;
+        T valor;
+        TabHash<K, T> novoTabb;
+
+        public K obtemChave() {
+            return chave;
+        }
+
+        public T obtemValor() {
+            return valor;
+        }
+
+        public Par(K chave, T valor) {
+            this.chave = chave;
+            this.valor = valor;
+        }
+
+        @Override
+        public int compareTo(Par outro) {
+            return this.chave.compareTo(outro.chave); // Usa a chave como critério de ordenação
+        }
+
     }
 
-    public K obtemChave() {
-        return chave;
-    }
+    ListaSequencial<ListaSequencial<Par>> tab = new ListaSequencial<ListaSequencial<Par>>();
+    int len = 0;// chaves
+    double fatorCarga = 0.75;
+    final int defcap = 30; // linhas inical
+    int linhas = defcap;
 
-    public V obtemValor() {
-        return valor;
-    }
-
-    public void defineValor(V novoValor) {
-        this.valor = novoValor;
-    }
-}
-
-public class TabHash<K, V> {
-    private int capacidade;
-    private int tamanho = 0;
-    private Par<K, V>[] tab;
-    private final Par<K, V> TOMBSTONE = new Par<>(null, null);
-
-    @SuppressWarnings("unchecked")
     public TabHash() {
-        this(256); 
-    }
-
-    @SuppressWarnings("unchecked")
-    public TabHash(int capacidadeInicial) {
-        this.capacidade = proximaPotenciaDeDois(capacidadeInicial);
-        this.tab = (Par<K, V>[]) new Par[this.capacidade];
-        this.tamanho = 0;
-    }
-
-    private int proximaPotenciaDeDois(int n) {
-        int cap = 1;
-        while (cap < n) {
-            cap <<= 1;
+        for (int j = 0; j < defcap; j++) {
+            tab.adiciona(new ListaSequencial<>());
         }
-        return cap;
     }
 
-    private int h1(K chave) {
-        int h = chave.hashCode();
-        h ^= (h >>> 20) ^ (h >>> 12);
-        return (h ^ (h >>> 7) ^ (h >>> 4)) & (capacidade - 1);
+    int calc_hash(K chave) {
+        return Math.abs((chave.hashCode())) % tab.comprimento();
     }
 
-    private int h2(K chave) {
-        int hash = Math.abs(chave.hashCode());
-        return (hash % (capacidade / 2)) * 2 + 1;
-    }
+    void expande() {
 
-    public void adiciona(K chave, V valor) {
-        if ((float)(tamanho + 1) / capacidade > 0.75f) {
-            expande();
+        ListaSequencial<ListaSequencial<Par>> newTab = new ListaSequencial<>();
+        for (int j = 0; j < 2 * linhas; j++) {
+            newTab.adiciona(new ListaSequencial<>());
         }
 
-        int hash1 = h1(chave);
-        int passo = h2(chave);
-        int indice = hash1;
-        int primeiroTombstone = -1;
+        for (int j = 0; j < linhas; j++) {
+            ListaSequencial<Par> linhaTab = tab.obtem(j);
+            for (int a = 0; a < linhaTab.comprimento(); a++) {
+                Par par = linhaTab.obtem(a);
+                K parChave = par.obtemChave();
+                T parValor = par.obtemValor();
+                int newHash = calc_hash(parChave);
+                ListaSequencial<Par> linhaNewTab = newTab.obtem(newHash);
+                Par existe = obtem_par(linhaNewTab, parChave);
 
-        for (int i = 0; i < capacidade; i++) {
-            Par<K, V> par = tab[indice];
-
-            if (par == null) {
-                int indiceFinal = (primeiroTombstone != -1) ? primeiroTombstone : indice;
-                tab[indiceFinal] = new Par<>(chave, valor);
-                tamanho++;
-                return;
-            }
-
-            if (par == TOMBSTONE) {
-                if (primeiroTombstone == -1) {
-                    primeiroTombstone = indice;
+                if (existe != null) {
+                    existe.valor = parValor;
+                } else {
+                    linhaNewTab.adiciona(new Par(parChave, parValor));
                 }
-            } else if (par.obtemChave().equals(chave)) {
-                par.defineValor(valor);
-                return;
             }
-
-            indice = (indice + passo) & (capacidade - 1);
         }
-
-        throw new RuntimeException("Tabela cheia, não foi possível inserir. Capacidade: " + capacidade + ", Tamanho: " + tamanho);
+        linhas *= 2;
+        tab = newTab;
     }
 
-    public V obtem(K chave) {
-        int hash1 = h1(chave);
-        int passo = h2(chave);
-        int indice = hash1;
+    public ListaSequencial<Par> obtem_linha(K chave) {
+        int hash = calc_hash(chave);
+        return tab.obtem(hash);
+    }
 
-        for (int i = 0; i < capacidade; i++) {
-            Par<K, V> par = tab[indice];
+    public T obtem(K chave) {
+        if (len == 0)
+            throw new IndexOutOfBoundsException("hashTab vazia");
+        int hash = calc_hash(chave);
+        ListaSequencial<Par> linha = tab.obtem(hash);
 
-            if (par == null) {
-                return null;
-            }
-
-            if (par != TOMBSTONE && par.obtemChave().equals(chave)) {
-                return par.obtemValor();
-            }
-
-            indice = (indice + passo) & (capacidade - 1);
+        if (obtem_par(linha, chave) != null)
+            return obtem_par(linha, chave).obtemValor();
+        else {
+            throw new IndexOutOfBoundsException("hash não econtrada");
         }
+    }
 
+    public T obtem(K chave, ListaSequencial<ListaSequencial<Par>> newTab) {
+        if (len == 0)
+            throw new IndexOutOfBoundsException("hashTab vazia");
+        int hash = calc_hash(chave);
+        ListaSequencial<Par> linha = newTab.obtem(hash);
+
+        if (obtem_par(linha, chave) != null)
+            return obtem_par(linha, chave).obtemValor();
+        else {
+            throw new IndexOutOfBoundsException("hash não econtrada");
+        }
+    }
+
+    public T obtem_ou_default(K chave, T defval) {
+
+        int hash = calc_hash(chave);
+        ListaSequencial<Par> linha = tab.obtem(hash);
+
+        if (obtem_par(linha, chave) != null)
+            return obtem_par(linha, chave).obtemValor();
+        else {
+            return defval;
+        }
+    }
+
+    public Par obtem_par(ListaSequencial<Par> linha, K chave) {
+        for (int a = 0; a < linha.comprimento(); a++) {
+            if (linha.obtem(a).obtemChave().equals(chave)) {
+                return linha.obtem(a);
+            }
+        }
         return null;
     }
 
+    public void adiciona(K chave, T valor) {
+        int FatorCargaAtual = len / linhas;
+        if (FatorCargaAtual > fatorCarga) expande();
+
+        ListaSequencial<Par> linha = obtem_linha(chave);
+        Par existente = obtem_par(linha, chave);
+
+        if (existente != null) {
+            existente.valor = valor;
+        } else {
+            linha.adiciona(new Par(chave, valor));
+            len++;
+        }
+    }
+
     public void remove(K chave) {
-        int hash1 = h1(chave);
-        int passo = h2(chave);
-        int indice = hash1;
-
-        for (int i = 0; i < capacidade; i++) {
-            Par<K, V> par = tab[indice];
-
-            if (par == null) {
+        ListaSequencial<Par> linha = obtem_linha(chave);
+        for (int i = 0; i < linha.comprimento(); i++) {
+            if (linha.obtem(i).obtemChave().equals(chave)) {
+                linha.remove(i);
+                len--;
                 return;
             }
-
-            if (par != TOMBSTONE && par.obtemChave().equals(chave)) {
-                tab[indice] = TOMBSTONE;
-                tamanho--;
-                return;
-            }
-
-            indice = (indice + passo) & (capacidade - 1);
         }
     }
 
     public boolean contem(K chave) {
-        return obtem(chave) != null;
+        ListaSequencial<Par> linha = obtem_linha(chave);
+        for (int i = 0; i < linha.comprimento(); i++) {
+            if (linha.obtem(i).obtemChave().equals(chave)) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    public boolean estaVazia() {
-        return tamanho == 0;
+    public boolean esta_vazia() {
+        return len == 0;
+    }
+
+    public ListaSequencial<T> valores() {
+        ListaSequencial<T> saida = new ListaSequencial<>();
+        for (int a = 0; a < tab.comprimento(); a++) {
+            for (int b = 0; b < tab.obtem(a).comprimento(); b++) {
+                saida.adiciona(tab.obtem(a).obtem(b).obtemValor());
+            }
+        }
+        return saida;
+    }
+
+    public ListaSequencial<K> chaves() {
+        ListaSequencial<K> saida = new ListaSequencial<>();
+        for (int a = 0; a < tab.comprimento(); a++) {
+            for (int b = 0; b < tab.obtem(a).comprimento(); b++) {
+                saida.adiciona(tab.obtem(a).obtem(b).obtemChave());
+            }
+        }
+        return saida;
+    }
+
+    public ListaSequencial<Par> items() {
+        ListaSequencial<Par> saida = new ListaSequencial<>();
+        for (int a = 0; a < tab.comprimento(); a++) {
+            for (int b = 0; b < tab.obtem(a).comprimento(); b++) {
+                saida.adiciona(tab.obtem(a).obtem(b));
+            }
+        }
+        return saida;
     }
 
     public int tamanho() {
-        return tamanho;
+        return len;
     }
 
-    @SuppressWarnings("unchecked")
-    private void expande() {
-        int antigaCapacidade = capacidade;
-        Par<K, V>[] antigaTab = tab;
-
-        capacidade = antigaCapacidade * 2;
-        tab = (Par<K, V>[]) new Par[capacidade];
-        tamanho = 0;
-
-        for (int i = 0; i < antigaCapacidade; i++) {
-            Par<K, V> par = antigaTab[i];
-            if (par != null && par != TOMBSTONE) {
-                adiciona(par.obtemChave(), par.obtemValor());
-            }
+    public void copia(TabHash<K,T> outra) {
+        ListaSequencial<Par> itens = outra.items(); // obtém todos os pares da outra tabela
+        for (int i = 0; i < itens.comprimento(); i++) {
+            Par par = itens.obtem(i); // obtém cada par
+            this.adiciona(par.obtemChave(), par.obtemValor()); // adiciona na tabela atual
         }
     }
 }
