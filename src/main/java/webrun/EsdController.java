@@ -21,16 +21,13 @@ public class EsdController {
         if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
             ipAddress = request.getRemoteAddr();
         }
-        
-        // Se vier ::1 (IPv6 loopback), converte pra 127.0.0.1
-        System.out.println(ipAddress);
+
         if ("0:0:0:0:0:0:0:1".equals(ipAddress)) {
             ipAddress = "127.0.0.1";
         }
         if (ipAddress == null || !ipAddress.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) {
             return null;
         }
-        System.out.println((ipAddress));
         return ipAddress;
     }
 

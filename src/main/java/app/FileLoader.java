@@ -55,21 +55,13 @@ public class FileLoader {
                     }
                 }
             }
-
-            System.out.println("Total de linhas de localidades lidas: " + contador);
         }
-
-        System.out.println("Carregadas " + localizacoes.comprimento() + " localidades.");
     }
 
     public static void carregarIPRanges(
             APB<IPRange> ipRanges,
             TabHash<Integer, Localidade> localizacoes,
             String IPV4_BLOCKS) throws Exception {
-
-        // Defina aqui o CIDR alvo que você quer inspecionar
-        final String TARGET_CIDR = "187.19.151.128/25";
-        boolean debugImprimiuAlvo = false;
 
         InputStream is = Thread.currentThread()
                 .getContextClassLoader()
@@ -82,13 +74,10 @@ public class FileLoader {
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
-            // Pula o cabeçalho
             reader.readLine();
 
             String linha;
-            int contador = 0;
             while ((linha = reader.readLine()) != null) {
-                contador++;
                 String[] campos = linha.split(",");
                 if (campos.length < 2) {
                     continue;
@@ -108,41 +97,14 @@ public class FileLoader {
 
                 IPRange range = IPUtil.cidrToRange(rede, geonameId);
                 rangesListSequencial.adiciona(range);
-
-                // ─── DEBUG CONDICIONAL: só imprimimos quando for o bloco alvo ───
-                if (!debugImprimiuAlvo && TARGET_CIDR.equals(rede)) {
-                    System.out.printf(
-                            "[DEBUG-ALVO] linha %d: CIDR=%s → start=%d, end=%d, geonameId=%d%n",
-                            contador,
-                            rede,
-                            range.getStartIP(),
-                            range.getEndIP(),
-                            range.getGeonameId());
-                    debugImprimiuAlvo = true;
-                    // Se quiser interromper a leitura logo após achar:
-                    // break;
-                }
-                // ─────────────────────────────────────────────────────────────────
-            }
-
-            if (!debugImprimiuAlvo) {
-                System.out.println("[WARN] não foi encontrado o CIDR alvo: " + TARGET_CIDR);
             }
         }
 
-        System.out.println("Lidos " + rangesListSequencial.comprimento() + " blocos válidos.");
-
-        System.out.println("Iniciando ordenação da ListaSequencial...");
         ordenarListaSequencial(rangesListSequencial);
-        System.out.println("ListaSequencial ordenada.");
 
-        System.out.println("Construindo árvore balanceada a partir de "
-                + rangesListSequencial.comprimento() + " ranges...");
         ipRanges.constroiDeListaOrdenada(rangesListSequencial);
-        System.out.println("Árvore de intervalos IP construída com sucesso.");
     }
 
-    // Usar merge sort para ordenar ListaSequencial<IPRange>
     private static void ordenarListaSequencial(ListaSequencial<IPRange> lista) {
         if (lista.comprimento() <= 1)
             return;
