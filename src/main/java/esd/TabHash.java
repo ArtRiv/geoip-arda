@@ -23,15 +23,15 @@ public class TabHash<K extends Comparable<K>, T> {
 
         @Override
         public int compareTo(Par outro) {
-            return this.chave.compareTo(outro.chave); // Usa a chave como critério de ordenação
+            return this.chave.compareTo(outro.chave);
         }
 
     }
 
     ListaSequencial<ListaSequencial<Par>> tab = new ListaSequencial<ListaSequencial<Par>>();
-    int len = 0;// chaves
+    int len = 0;
     double fatorCarga = 0.75;
-    final int defcap = 30; // linhas inical
+    final int defcap = 30;
     int linhas = defcap;
 
     public TabHash() {
@@ -194,15 +194,15 @@ public class TabHash<K extends Comparable<K>, T> {
         return saida;
     }
 
-    public int tamanho() {
+    public int comprimento() {
         return len;
     }
 
     public void copia(TabHash<K,T> outra) {
-        ListaSequencial<Par> itens = outra.items(); // obtém todos os pares da outra tabela
+        ListaSequencial<Par> itens = outra.items();
         for (int i = 0; i < itens.comprimento(); i++) {
-            Par par = itens.obtem(i); // obtém cada par
-            this.adiciona(par.obtemChave(), par.obtemValor()); // adiciona na tabela atual
+            Par par = itens.obtem(i);
+            this.adiciona(par.obtemChave(), par.obtemValor());
         }
     }
 }

@@ -1,12 +1,7 @@
 package esd;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
-
 public class APB<T extends Comparable<T>> {
-    private NodoAPB<T> raiz;
+    public NodoAPB<T> raiz;
     private int len;
 
     public APB() {
@@ -85,7 +80,7 @@ public class APB<T extends Comparable<T>> {
         return raiz == null;
     }
 
-    public ListaSequencial<T> listeInOrder() {
+    public ListaSequencial<T> emOrdem() {
         ListaSequencial<T> lista = new ListaSequencial<>();
 
         listeInOrderRec(raiz, lista);
@@ -101,7 +96,7 @@ public class APB<T extends Comparable<T>> {
         }
     }
 
-    public ListaSequencial<T> listePreOrder() {
+    public ListaSequencial<T> preOrdem() {
         ListaSequencial<T> lista = new ListaSequencial<>();
 
         listePreOrderRec(raiz, lista);
@@ -117,7 +112,7 @@ public class APB<T extends Comparable<T>> {
         }
     }
 
-    public ListaSequencial<T> listePostOrder() {
+    public ListaSequencial<T> posOrdem() {
         ListaSequencial<T> lista = new ListaSequencial<>();
 
         listePostOrderRec(raiz, lista);
@@ -133,7 +128,7 @@ public class APB<T extends Comparable<T>> {
         }
     }
 
-    public ListaSequencial<T> listeEmLargura() {
+    public ListaSequencial<T> emLargura() {
         ListaSequencial<T> lista = new ListaSequencial<>();
 
         Deque<NodoAPB<T>> nos = new Deque<>();
@@ -183,17 +178,53 @@ public class APB<T extends Comparable<T>> {
         return maxv;
     }
 
-    public List<T> menoresQue(T val) {
-        List<T> result = new ArrayList<>();
+    public T menor_que(T valor) {
+        return menorQueRec(valor, raiz);
+    }
+
+    public T menorQueRec(T valor, NodoAPB<T> nodo) {
+        if (nodo == null)
+            return null;
+
+        if (nodo.valor.compareTo(valor) > 0) {
+            return menorQueRec(valor, nodo.esq);
+        } else {
+            T candidato = menorQueRec(valor, nodo.dir);
+            return (candidato != null) ? candidato : nodo.valor;
+        }
+    }
+
+    public T maior_que(T valor) {
+        return maiorQueRec(valor, raiz);
+    }
+
+    public T maiorQueRec(T valor, NodoAPB<T> nodo) {
+        if (nodo.valor.compareTo(valor) == 0)
+            return valor;
+        if (nodo.valor.compareTo(valor) > 0) {
+            if (nodo.esq != null)
+                return maiorQueRec(valor, nodo.esq);
+            else
+                return nodo.valor;
+        }
+
+        if (nodo.valor.compareTo(valor) < 0 && nodo.dir != null)
+            return maiorQueRec(valor, nodo.dir);
+
+        return null;
+    }
+
+    public ListaSequencial<T> menores_que(T val) {
+        ListaSequencial<T> result = new ListaSequencial<>();
         menoresQueRec(raiz, val, result);
         return result;
     }
 
-    private void menoresQueRec(NodoAPB<T> no, T val, List<T> result) {
+    private void menoresQueRec(NodoAPB<T> no, T val, ListaSequencial<T> result) {
         if (no == null)
             return;
         if (no.valor.compareTo(val) < 0) {
-            result.add(no.valor);
+            result.adiciona(no.valor);
             menoresQueRec(no.esq, val, result);
             menoresQueRec(no.dir, val, result);
         } else {
@@ -201,17 +232,17 @@ public class APB<T extends Comparable<T>> {
         }
     }
 
-    public List<T> maioresQue(T val) {
-        List<T> result = new ArrayList<>();
+    public ListaSequencial<T> maiores_que(T val) {
+        ListaSequencial<T> result = new ListaSequencial<>();
         maioresQueRec(raiz, val, result);
         return result;
     }
 
-    private void maioresQueRec(NodoAPB<T> no, T val, List<T> result) {
+    private void maioresQueRec(NodoAPB<T> no, T val, ListaSequencial<T> result) {
         if (no == null)
             return;
         if (no.valor.compareTo(val) > 0) {
-            result.add(no.valor);
+            result.adiciona(no.valor);
             maioresQueRec(no.esq, val, result);
             maioresQueRec(no.dir, val, result);
         } else {
@@ -281,6 +312,18 @@ public class APB<T extends Comparable<T>> {
         }
         this.raiz = buildBalanced(elementos, 0, elementos.comprimento() - 1, null);
         this.len = elementos.comprimento();
+    }
+
+    public ListaSequencial<T> faixa(T min, T max) {
+        ListaSequencial<T> todos = emOrdem();
+        ListaSequencial<T> saida = new ListaSequencial<>();
+        for (int i = 0; i < todos.comprimento(); i++) {
+            T valor = todos.obtem(i);
+            if (valor.compareTo(min) >= 0 && valor.compareTo(max) <= 0) {
+                saida.adiciona(valor);
+            }
+        }
+        return saida;
     }
 
 }

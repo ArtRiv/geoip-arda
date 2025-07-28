@@ -16,19 +16,21 @@ public class EsdController {
     String get_remote_ip(HttpServletRequest request) {
         String ipAddress = request.getHeader("X-Forwarded-For");
         if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
-            ipAddress = request.getHeader("X-Real-IP"); // Check for X-Real-IP
+            ipAddress = request.getHeader("X-Real-IP");
         }
         if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
-            ipAddress = request.getRemoteAddr(); // Fallback to getRemoteAddr
+            ipAddress = request.getRemoteAddr();
         }
-        // If X-Forwarded-For contains multiple IPs, take the first one
-        if (ipAddress != null && ipAddress.contains(",")) {
-            ipAddress = ipAddress.split(",")[0].trim();
+        
+        // Se vier ::1 (IPv6 loopback), converte pra 127.0.0.1
+        System.out.println(ipAddress);
+        if ("0:0:0:0:0:0:0:1".equals(ipAddress)) {
+            ipAddress = "127.0.0.1";
         }
-        // Só aceita IPv4
         if (ipAddress == null || !ipAddress.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) {
-            return null; // não retorna IPv6 nem formatos inválidos
+            return null;
         }
+        System.out.println((ipAddress));
         return ipAddress;
     }
 
@@ -46,10 +48,7 @@ public class EsdController {
     @GetMapping("/geoip")
     ResponseEntity<Localidade> meu_local(HttpServletRequest req) {
         String ip = get_remote_ip(req);
-        if (ip == null) {
-            // Retorna erro explícito de IP inválido
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
-        }
+
         return busca_local(ip);
     }
 
