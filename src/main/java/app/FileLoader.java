@@ -58,8 +58,8 @@ public class FileLoader {
         }
     }
 
-    public static void carregarIPRanges(
-            APB<IPRange> ipRanges,
+    public static void carregarFaixasIP(
+            APB<FaixaIP> faixaIP,
             TabHash<Integer, Localidade> localizacoes,
             String IPV4_BLOCKS) throws Exception {
 
@@ -70,7 +70,7 @@ public class FileLoader {
             throw new FileNotFoundException("Arquivo de blocos IPv4 não encontrado: " + IPV4_BLOCKS);
         }
 
-        ListaSequencial<IPRange> rangesListSequencial = new ListaSequencial<>();
+        ListaSequencial<FaixaIP> rangesListSequencial = new ListaSequencial<>();
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
@@ -95,23 +95,23 @@ public class FileLoader {
                     continue;
                 }
 
-                IPRange range = IPUtil.cidrToRange(rede, geonameId);
+                FaixaIP range = UtilidadesIP.cidrParaFaixa(rede, geonameId);
                 rangesListSequencial.adiciona(range);
             }
         }
 
         ordenarListaSequencial(rangesListSequencial);
 
-        ipRanges.constroiDeListaOrdenada(rangesListSequencial);
+        faixaIP.constroiDeListaOrdenada(rangesListSequencial);
     }
 
-    private static void ordenarListaSequencial(ListaSequencial<IPRange> lista) {
+    private static void ordenarListaSequencial(ListaSequencial<FaixaIP> lista) {
         if (lista.comprimento() <= 1)
             return;
-        mergeSort(lista, 0, lista.comprimento() - 1, new IPRange[lista.comprimento()]);
+        mergeSort(lista, 0, lista.comprimento() - 1, new FaixaIP[lista.comprimento()]);
     }
 
-    private static void mergeSort(ListaSequencial<IPRange> lista, int inicio, int fim, IPRange[] aux) {
+    private static void mergeSort(ListaSequencial<FaixaIP> lista, int inicio, int fim, FaixaIP[] aux) {
         if (inicio < fim) {
             int meio = (inicio + fim) / 2;
             mergeSort(lista, inicio, meio, aux);
@@ -120,7 +120,7 @@ public class FileLoader {
         }
     }
 
-    private static void merge(ListaSequencial<IPRange> lista, int inicio, int meio, int fim, IPRange[] aux) {
+    private static void merge(ListaSequencial<FaixaIP> lista, int inicio, int meio, int fim, FaixaIP[] aux) {
         int i = inicio, j = meio + 1, k = inicio;
         while (i <= meio && j <= fim) {
             if (lista.obtem(i).compareTo(lista.obtem(j)) <= 0) {

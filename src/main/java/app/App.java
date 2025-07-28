@@ -1,10 +1,7 @@
 package app;
 
-import java.io.*;
-
 import esd.TabHash;
 import esd.APB;
-import esd.ListaSequencial;
 import esd.APB.NodoAPB;
 
 public class App {
@@ -13,54 +10,51 @@ public class App {
     final String CITY_LOCATIONS = "GeoLite2-City-Locations-pt-BR.csv";
 
     private TabHash<Integer, Localidade> localizacoes;
-    private APB<IPRange> ipRanges;
-    private ListaSequencial<IPRange> rangesList;
+    private APB<FaixaIP> faixaIP;
 
     public App() {
         localizacoes = new TabHash<>();
-        ipRanges = new APB<>();
-        rangesList = new ListaSequencial<>();
+        faixaIP = new APB<>();
 
         try {
             FileLoader.carregarLocalidades(localizacoes, CITY_LOCATIONS);
-            FileLoader.carregarIPRanges(ipRanges, localizacoes, IPV4_BLOCKS);
+            FileLoader.carregarFaixasIP(faixaIP, localizacoes, IPV4_BLOCKS);
         }
         catch (Exception e) {
             throw new IllegalStateException("Erro ao processar algum dos arquivos: " + e.getMessage(), e);
         }
     }
     
-
-    private IPRange findIPRangeContainingIP(long ip) {
-        NodoAPB<IPRange> raizNodo = ipRanges.raiz; 
-        IPRange resultado = findIPRangeRec(raizNodo, ip);
+    private FaixaIP encontrarFaixaIP(long ip) {
+        NodoAPB<FaixaIP> raizNodo = faixaIP.raiz; 
+        FaixaIP resultado = encontrarFaixaIPRec(raizNodo, ip);
         return resultado;
     }
 
-    private IPRange findIPRangeRec(NodoAPB<IPRange> nodo, long ip) {
+    private FaixaIP encontrarFaixaIPRec(NodoAPB<FaixaIP> nodo, long ip) {
         if (nodo == null) {
             return null;
         }
-        IPRange r = nodo.valor;
-        if (r.contains(ip)) {
+        FaixaIP r = nodo.valor;
+        if (r.contem(ip)) {
             return r;
         } 
-        else if (ip < r.getStartIP()) {
-            return findIPRangeRec(nodo.esq, ip);
+        else if (ip < r.obtemInicioIP()) {
+            return encontrarFaixaIPRec(nodo.esq, ip);
         } else {
-            return findIPRangeRec(nodo.dir, ip);
+            return encontrarFaixaIPRec(nodo.dir, ip);
         }
     }
 
-    public Localidade busca_localidade(String IP) {
+    public Localidade busca_localidade(String ip) {
         try {
-            long numericIP = IPUtil.ipToLong(IP);
-            IPRange range = findIPRangeContainingIP(numericIP);
-            if (range != null) {
-                return localizacoes.obtem(range.getGeonameId());
+            long IPFormatadoParaNumerico = UtilidadesIP.ipParaLongo(ip);
+            FaixaIP faixa = encontrarFaixaIP(IPFormatadoParaNumerico);
+            if (faixa != null) {
+                return localizacoes.obtem(faixa.obtemIdGeoname());
             }
         } catch (Exception e) {
-            System.err.println("Erro ao buscar localidade para IP " + IP + ": " + e.getMessage());
+            System.err.println("Erro ao buscar localidade para IP " + ip + ": " + e.getMessage());
         }
         return null;
     }
