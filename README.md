@@ -1,40 +1,154 @@
 # Projeto 2 de Estruturas de Dados: Geolocalizador
 
-No projeto 2 sua equipe deve implementar um geolocalizador IP, conforme descrito no Moodle:
-* [Descrição do projeto](https://moodle.ifsc.edu.br/mod/page/view.php?id=257580)
-  
-## O geolocalizador como uma aplicação web
+## Grupo:
 
-Neste repositório você tem uma aplicação web para acessar seu geolocalizador. Assim, o geolocalizador funcionará com uma API web, a qual recebe consultas na forma de requisições HTTP contendo o endereço IP a ser localizado, e responde com conteúdos JSON informando a localidade encontrada. 
+#### Caio Eduardo de Aguiar
+#### Arthur Felaço Matos de Souza
 
-Inicie a implementação pela classe App (_src/java/main/app/App.java_). Essa classe deve implementar o seguinte método para realizar a operação básica do geolocalizador 
+## Estruturas de Dados Utilizadas
 
-| Método                          | Operação                                                        |
-|---------------------------------|-----------------------------------------------------------------|
-| busca_localidade(String ip)     | Obtém a localidade geográfica associado ao endereço ip          |
+### Tabela Hash (**`TabHash`**)
 
-Leia os comentários escritos no código esqueleto dessa classe ... eles podem ajudar no desenvolvimento. Respeite as assinaturas dos métodos ali existentes: não modifique os parâmetros nem o tipo retornado por cada método. Note que no construtor da classe já há o código para acessar o arquivo _classes.csv_ (localizado em _src/java/resources_), o qual deve conter as descrições das classes de atendimento.
+- **Finalidade:** Armazenar as localidades (país, cidade) associadas a cada identificador GeoNameID.
+- **Motivo da escolha:** A tabela hash permite buscas rápidas (O(1) na média) por chave, essencial para obter a localidade associada a um bloco de IP (como era chave e valor pensamos em usar pois cumpre exatamente o que propoe).
+- **Implementação:** Usado para guardar chave e valor de país e cidade.
 
-A classe _Localidade_ está predefinida, e deve ser usada para retornar o resultado do método _busca_localidade_. Ela não pode ser modificada !
+### Árvore Binária de Pesquisa (**`APB`**)
 
-Você pode criar novas classes que achar necessárias, as quais devem ficar na package _app_ (junto da classe _App_).
+- **Finalidade:** Armazenar os blocos de IP (faixas), permitindo a busca eficiente do bloco que contém um determinado IP.
+- **Motivo da escolha:** A árvore binária balanceada permite buscas logarítmicas (O(log n)), o que é fundamental dado o grande volume de faixas de IP (milhões de registros).
+- **Balanceamento:** A árvore é construída de forma balanceada a partir dos dados ordenados, garantindo desempenho ótimo nas consultas.
 
-Coloque suas estruturas de dados na package _esd_ (_src/java/main/esd_). 
+## Justificativas das Escolhas
 
-## Os arquivos de dados GeoLite
+- **Eficiência:** Dado o alto volume de dados (milhões de faixas de IP e centenas de milhares de localidades), estruturas eficientes são necessárias para garantir tempos de resposta adequados, tentamos usar com listaEncadeada antes de mudarmos para listaSequencial, porém era tão lento que tentei rodar por 1 hora e não houve resultado.
+- **Escalabilidade:** A escolha por uma árvore binária balanceada e tabela hash permite que o sistema escale para grandes volumes de dados sem degradação significativa de desempenho e por cumprir exatamente o que precisávamos (faixa e chave:valor).
 
-Os arquivos GeoLite devem ser copiados para a pasta _src/main/resources_. Certifique-se de que os seguintes arquivos estão lá:
-* GeoLite2-City-Blocks-IPv4.csv
-* GeoLite2-City-Locations-pt-BR.csv
+### Diagrama de Classes
 
-Maiores informações sobre os conteúdos desses arquivos podem ser obtidas na [descrição do projeto](https://moodle.ifsc.edu.br/mod/page/view.php?id=257580).
+```mermaid
+classDiagram
+    direction LR
 
-**ATENÇÃO**: como esses arquivos são muito grandes, não é possível armazená-los no github !
+    subgraph app
+        class App {
+            -IPV4_BLOCKS: String
+            -CITY_LOCATIONS: String
+            -faixaIP: APB~FaixaIP~
+            -localizacoes: TabHash~Integer, Localidade~
+            +App()
+            -encontrarFaixaIP(): FaixaIP
+            -encontrarFaixaIPRec(): FaixaIP
+            +busca_localidade(ip: String): Localidade
+        }
 
-O seguinte arquivo compactado contém esses arquivos de dados:
-* [GeoLite Database](https://moodle.ifsc.edu.br/pluginfile.php/550385/mod_page/content/55/geoip.tgz)
+        class FaixaIP {
+            -inicioIP: long
+            -fimIP: long
+            -idGeoname: int
+            +faixaIP(inicioIP: long, fimIP: long, idGeoname: int)
+            +obtemInicioIP(): long
+            +obtemFimIP(): long
+            +obtemidGeoname(): int
+            +contains(ip: long): boolean
+            +compareTo(other: faixaIP): int
+            +toString(): String
+        }
 
-## Testando seu geolocalizador
+        class IPUtil {
+            +static ipParaLongo(ipAddress: String): long
+            +static obtemFimIpDeCidr(startIP: long, cidrMask: int): long
+            +static cidrParaFaixa(cidr: String, idGeoname: int): FaixaIP
+            +static longoParaIp(ip: long): String
+        }
 
-Para testar seu programa, execute-o e então acesse o seguinte link:
-* [Meu GeoIP](http://localhost:8080/)
+        class Localidade {
+            <<record>>
+            +pais: String
+            +local: String
+        }
+    end
+
+    subgraph esd
+        class TabHash~K, T~ {
+            -tab: ListaSequencial~ListaSequencial~Par~~
+            -len: int
+            -fatorCarga: double
+            -defcap: int
+            -linhas: int
+            +TabHash()
+            -calc_hash(chave: K): int
+            -expande(): void
+            +obtem_linha(chave: K): ListaSequencial~Par~
+            +obtem(chave: K): T
+            +adiciona(chave: K, valor: T): void
+            +remove(chave: K): void
+            +contem(chave: K): boolean
+            +esta_vazia(): boolean
+            +comprimento(): int *
+        }
+
+        class APB~T~ {
+            -raiz: NodoAPB~T~
+            -len: int
+            +adiciona(val: T)
+            +remove(val: T)
+            +procura(val: T): NodoAPB~T~
+            +obtem_raiz(): T
+            +esta_vazia(): boolean
+            +menores_que(val: T): ListaSequencial~T~
+            +maiores_que(val: T): ListaSequencial~T~
+            +altura(): int
+            +tamanho(): int
+            +limpa()
+            +balanceia()
+            +constroiDeListaOrdenada(elementos: ListaSequencial~T~)
+            +faixa(min: T, max: T): ListaSequencial~T~
+        }
+        class NodoAPB~T~ {
+            +valor: T
+            +esq: NodoAPB~T~
+            +dir: NodoAPB~T~
+            +pai: NodoAPB~T~
+            <<static>>
+        }
+        class ListaSequencial~T~ {
+            +adiciona(elemento: T)
+            +obtem(indice: int): T
+            +substitui(indice: int, valor: T)
+            +comprimento(): int
+            +esta_vazia(): boolean
+            +limpa()
+            +ordena()
+        }
+
+        class ListaSequencial~T~ {
+            -area: T[]
+            -len: int
+            -defcap: int
+            +ListaSequencial()
+            +expande(): void
+            +esta_vazia(): boolean
+            +capacidade(): int
+            +adiciona(elemento: T): void
+            +insere(indice: int, elemento: T): void
+            +remove(indice: int): void
+            +procura(valor: T): int
+            +obtem(indice: int): T
+            +substitui(indice: int, valor: T): void
+            +comprimento(): int
+            +limpa(): void
+        }
+    end
+
+    %% Relações
+    App ..> ListaSequencial
+    App ..> TabHash
+    App ..> faixaIP
+    App ..> Localidade
+    App ..> IPUtil
+    APB~T~ --> NodoAPB~T~
+
+    TabHash ..> ListaSequencial
+    APB ..> ListaSequencial
+```
